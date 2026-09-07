@@ -1,4 +1,5 @@
 export type ComponentId =
+  | 'identity'
   | 'about'
   | 'stats'
   | 'languages'
@@ -6,7 +7,52 @@ export type ComponentId =
   | 'contributions'
   | 'socials'
 
+export const componentIds: ComponentId[] = [
+  'identity',
+  'about',
+  'stats',
+  'languages',
+  'repositories',
+  'contributions',
+  'socials',
+]
+
+export type ProfileElementId =
+  | 'avatar'
+  | 'name'
+  | 'availability'
+  | 'username'
+  | 'role'
+  | 'githubMark'
+
+export const profileElementIds: ProfileElementId[] = [
+  'avatar',
+  'name',
+  'availability',
+  'username',
+  'role',
+  'githubMark',
+]
+
+export const profileElementLabels: Record<ProfileElementId, string> = {
+  avatar: 'Avatar',
+  name: 'Name',
+  availability: 'Availability',
+  username: 'Username',
+  role: 'Role',
+  githubMark: 'GitHub mark',
+}
+
 export type TemplateId = 'minimal' | 'modern' | 'developer'
+
+export type RepositoryId = 'orbit-notes' | 'kinetic-ui' | 'tiny-colors'
+export type SocialId = 'portfolio' | 'linkedin' | 'email'
+export type StatId =
+  | 'repositories'
+  | 'followers'
+  | 'following'
+  | 'contributions'
+export type LanguageId = 'typescript' | 'react' | 'rust' | 'other'
 
 export const profile = {
   name: 'Maya Chen',
@@ -22,6 +68,7 @@ export const profile = {
 
 export const repositories = [
   {
+    id: 'orbit-notes' as const,
     name: 'orbit-notes',
     description: 'A tiny local-first workspace for ideas that need room to grow.',
     language: 'TypeScript',
@@ -30,6 +77,7 @@ export const repositories = [
     forks: 54,
   },
   {
+    id: 'kinetic-ui' as const,
     name: 'kinetic-ui',
     description: 'Accessible React primitives with thoughtful motion built in.',
     language: 'React',
@@ -38,6 +86,7 @@ export const repositories = [
     forks: 31,
   },
   {
+    id: 'tiny-colors' as const,
     name: 'tiny-colors',
     description: 'Fast colour utilities for designers who happen to code.',
     language: 'Rust',
@@ -49,24 +98,28 @@ export const repositories = [
 
 export const languages = [
   {
+    id: 'typescript' as const,
     name: 'TypeScript',
     percentage: 48,
     colorClass: 'bg-language-typescript',
     widthClass: 'w-[48%]',
   },
   {
+    id: 'react' as const,
     name: 'React',
     percentage: 27,
     colorClass: 'bg-language-react',
     widthClass: 'w-[27%]',
   },
   {
+    id: 'rust' as const,
     name: 'Rust',
     percentage: 15,
     colorClass: 'bg-language-rust',
     widthClass: 'w-[15%]',
   },
   {
+    id: 'other' as const,
     name: 'Other',
     percentage: 10,
     colorClass: 'bg-language-other',
@@ -75,9 +128,20 @@ export const languages = [
 ]
 
 export const socialLinks = [
-  { label: 'mayacodes.dev', value: 'Portfolio' },
-  { label: '@maya_codes', value: 'LinkedIn' },
-  { label: 'hello@mayacodes.dev', value: 'Email' },
+  { id: 'portfolio' as const, label: 'mayacodes.dev', value: 'Portfolio' },
+  { id: 'linkedin' as const, label: '@maya_codes', value: 'LinkedIn' },
+  { id: 'email' as const, label: 'hello@mayacodes.dev', value: 'Email' },
+]
+
+export const profileStats = [
+  {
+    id: 'repositories' as const,
+    value: profile.repositories,
+    label: 'Repositories',
+  },
+  { id: 'followers' as const, value: '1.2k', label: 'Followers' },
+  { id: 'following' as const, value: profile.following, label: 'Following' },
+  { id: 'contributions' as const, value: '1,086', label: 'Contributions' },
 ]
 
 export const contributions = Array.from({ length: 84 }, (_, index) => {
@@ -89,6 +153,7 @@ export const contributions = Array.from({ length: 84 }, (_, index) => {
 })
 
 export const componentLabels: Record<ComponentId, string> = {
+  identity: 'Profile image & header',
   about: 'About me',
   stats: 'GitHub stats',
   languages: 'Main languages',
