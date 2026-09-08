@@ -7,22 +7,31 @@ import {
   profileStats,
   repositories,
   socialLinks,
+  templateOptions,
+  textSizeOptions,
+  themeOptions,
   type ComponentId,
   type LanguageId,
   type ProfileElementId,
   type RepositoryId,
   type SocialId,
   type StatId,
+  type TemplateId,
+  type TextSizeId,
 } from '@/data/profile'
 
 const BUILDER_PREFERENCES_KEY = 'commitcv:builder-preferences:v1'
 const BUILDER_PREFERENCES_VERSION = 1
+const LEGACY_APPEARANCE_KEY = 'commitcv-builder-preferences'
 
 export type BuilderPreferences = {
   collections: CollectionOrders
   enabled: Record<ComponentId, boolean>
   order: ComponentId[]
   profileElements: Record<ProfileElementId, boolean>
+  template: TemplateId
+  textSize: TextSizeId
+  themeIndex: number
 }
 
 export type CollectionOrders = {
@@ -50,6 +59,9 @@ export const defaultBuilderPreferences: BuilderPreferences = {
   enabled: defaultEnabled,
   order: [...componentIds],
   profileElements: defaultProfileElements,
+  template: 'modern',
+  textSize: 'medium',
+  themeIndex: 0,
 }
 
 function sanitizeOrder<T extends string>(value: unknown, allowedIds: T[]): T[] {
@@ -136,6 +148,27 @@ export function sanitizeProfileElements(
   ) as Record<ProfileElementId, boolean>
 }
 
+export function sanitizeTemplate(value: unknown): TemplateId {
+  return templateOptions.some(({ id }) => id === value)
+    ? (value as TemplateId)
+    : defaultBuilderPreferences.template
+}
+
+export function sanitizeTextSize(value: unknown): TextSizeId {
+  return textSizeOptions.some(({ id }) => id === value)
+    ? (value as TextSizeId)
+    : defaultBuilderPreferences.textSize
+}
+
+export function sanitizeThemeIndex(value: unknown): number {
+  return typeof value === 'number' &&
+    Number.isInteger(value) &&
+    value >= 0 &&
+    value < themeOptions.length
+    ? value
+    : defaultBuilderPreferences.themeIndex
+}
+
 export function parseBuilderPreferences(value: string | null): BuilderPreferences {
   if (!value) return structuredClone(defaultBuilderPreferences)
 
@@ -151,6 +184,9 @@ export function parseBuilderPreferences(value: string | null): BuilderPreference
       enabled: sanitizeEnabledComponents(stored.enabled),
       order: sanitizeComponentOrder(stored.order),
       profileElements: sanitizeProfileElements(stored.profileElements),
+      template: sanitizeTemplate(stored.template),
+      textSize: sanitizeTextSize(stored.textSize),
+      themeIndex: sanitizeThemeIndex(stored.themeIndex),
     }
   } catch {
     return structuredClone(defaultBuilderPreferences)
@@ -163,9 +199,19 @@ export function readBuilderPreferences(): BuilderPreferences {
   }
 
   try {
-    return parseBuilderPreferences(
-      window.localStorage.getItem(BUILDER_PREFERENCES_KEY),
-    )
+    const stored = window.localStorage.getItem(BUILDER_PREFERENCES_KEY)
+    if (stored) return parseBuilderPreferences(stored)
+
+    const legacyAppearance = JSON.parse(
+      window.localStorage.getItem(LEGACY_APPEARANCE_KEY) ?? '{}',
+    ) as Record<string, unknown>
+
+    return {
+      ...structuredClone(defaultBuilderPreferences),
+      template: sanitizeTemplate(legacyAppearance.template),
+      textSize: sanitizeTextSize(legacyAppearance.textSize),
+      themeIndex: sanitizeThemeIndex(legacyAppearance.themeIndex),
+    }
   } catch {
     return structuredClone(defaultBuilderPreferences)
   }
@@ -183,6 +229,9 @@ export function saveBuilderPreferences(preferences: BuilderPreferences) {
         enabled: sanitizeEnabledComponents(preferences.enabled),
         order: sanitizeComponentOrder(preferences.order),
         profileElements: sanitizeProfileElements(preferences.profileElements),
+        template: sanitizeTemplate(preferences.template),
+        textSize: sanitizeTextSize(preferences.textSize),
+        themeIndex: sanitizeThemeIndex(preferences.themeIndex),
       }),
     )
   } catch {

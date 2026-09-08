@@ -9,6 +9,9 @@ import {
   sanitizeComponentOrder,
   sanitizeEnabledComponents,
   sanitizeProfileElements,
+  sanitizeTemplate,
+  sanitizeTextSize,
+  sanitizeThemeIndex,
 } from '@/lib/builder-preferences'
 
 describe('builder preferences', () => {
@@ -71,6 +74,27 @@ describe('builder preferences', () => {
       role: true,
       username: true,
     })
+  })
+
+  it('preserves valid appearance settings and rejects invalid values', () => {
+    expect(
+      parseBuilderPreferences(
+        JSON.stringify({
+          version: 1,
+          template: 'midnight',
+          textSize: 'large',
+          themeIndex: 6,
+        }),
+      ),
+    ).toMatchObject({
+      template: 'midnight',
+      textSize: 'large',
+      themeIndex: 6,
+    })
+
+    expect(sanitizeTemplate('unknown')).toBe('modern')
+    expect(sanitizeTextSize('extra-large')).toBe('medium')
+    expect(sanitizeThemeIndex(99)).toBe(0)
   })
 
   it('sanitizes each nested collection without allowing cross-group ids', () => {

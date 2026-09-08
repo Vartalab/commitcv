@@ -26,6 +26,7 @@ import {
   type SocialId,
   type StatId,
   type TemplateId,
+  type TextSizeId,
 } from '@/data/profile'
 import {
   readBuilderPreferences,
@@ -120,11 +121,17 @@ function App() {
   const [builderPreferences, setBuilderPreferences] = useState(
     readBuilderPreferences,
   )
-  const [template, setTemplate] = useState<TemplateId>('modern')
-  const [themeIndex, setThemeIndex] = useState(0)
   const [viewport, setViewport] = useState<'desktop' | 'mobile'>('desktop')
   const [exportMessage, setExportMessage] = useState('')
-  const { collections, enabled, order, profileElements } = builderPreferences
+  const {
+    collections,
+    enabled,
+    order,
+    profileElements,
+    template,
+    textSize,
+    themeIndex,
+  } = builderPreferences
 
   useEffect(() => {
     saveBuilderPreferences(builderPreferences)
@@ -205,6 +212,27 @@ function App() {
     }))
   }
 
+  const setTemplate = (nextTemplate: TemplateId) => {
+    setBuilderPreferences((current) => ({
+      ...current,
+      template: nextTemplate,
+    }))
+  }
+
+  const setTextSize = (nextTextSize: TextSizeId) => {
+    setBuilderPreferences((current) => ({
+      ...current,
+      textSize: nextTextSize,
+    }))
+  }
+
+  const setThemeIndex = (nextThemeIndex: number) => {
+    setBuilderPreferences((current) => ({
+      ...current,
+      themeIndex: nextThemeIndex,
+    }))
+  }
+
   const hasVisibleProfileElement = Object.values(profileElements).some(Boolean)
   const activeCount = order.filter(
     (id) => enabled[id] && (id !== 'identity' || hasVisibleProfileElement),
@@ -264,12 +292,14 @@ function App() {
             enabled={enabled}
             onReorder={reorderComponent}
             onTemplateChange={setTemplate}
+            onTextSizeChange={setTextSize}
             onThemeChange={setThemeIndex}
             onToggle={toggleComponent}
             onToggleProfileElement={toggleProfileElement}
             order={order}
             profileElements={profileElements}
             template={template}
+            textSize={textSize}
             themeIndex={themeIndex}
           />
 
@@ -353,6 +383,7 @@ function App() {
                   order={order}
                   profileElements={profileElements}
                   template={template}
+                  textSize={textSize}
                   themeIndex={themeIndex}
                 />
               </div>
