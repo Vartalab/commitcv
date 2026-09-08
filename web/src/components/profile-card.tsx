@@ -14,24 +14,46 @@ import { Badge } from '@/components/ui/badge'
 import { Card } from '@/components/ui/card'
 import { Separator } from '@/components/ui/separator'
 import {
+  SortableSurface,
+  useItemSortable,
+  useSectionSortable,
+} from '@/components/sortable-surface'
+import {
   componentLabels,
   contributions,
   languages,
   profile,
+  profileStats,
   repositories,
   socialLinks,
   themeOptions,
   type ComponentId,
+  type LanguageId,
+  type ProfileElementId,
+  type RepositoryId,
+  type SocialId,
+  type StatId,
   type TemplateId,
 } from '@/data/profile'
+import type { CollectionOrders } from '@/lib/builder-preferences'
 import { cn } from '@/lib/utils'
 
 type ProfileCardProps = {
+  collectionOrders: CollectionOrders
   compact: boolean
   enabled: Record<ComponentId, boolean>
   order: ComponentId[]
+  profileElements: Record<ProfileElementId, boolean>
   template: TemplateId
   themeIndex: number
+  onReorder: (activeId: ComponentId, targetId: ComponentId) => void
+  onReorderLanguages: (activeId: LanguageId, targetId: LanguageId) => void
+  onReorderRepositories: (
+    activeId: RepositoryId,
+    targetId: RepositoryId,
+  ) => void
+  onReorderSocials: (activeId: SocialId, targetId: SocialId) => void
+  onReorderStats: (activeId: StatId, targetId: StatId) => void
 }
 
 type ProfileSectionProps = {
@@ -41,7 +63,43 @@ type ProfileSectionProps = {
 }
 
 type Repository = (typeof repositories)[number]
+type SocialLink = (typeof socialLinks)[number]
 type Theme = (typeof themeOptions)[number]
+
+function SortablePreviewSection({
+  children,
+  developer,
+  id,
+  index,
+}: {
+  children: ReactNode
+  developer: boolean
+  id: ComponentId
+  index: number
+}) {
+  const { isDragSource, ref } = useSectionSortable(
+    id,
+    index,
+    'preview',
+  )
+
+  return (
+    <div
+      className={cn(
+        'relative touch-pan-y cursor-grab select-none focus-visible:rounded-xl focus-visible:outline-1 focus-visible:-outline-offset-1',
+        developer
+          ? 'focus-visible:outline-developer-muted/60'
+          : 'focus-visible:outline-stone-500/50',
+        isDragSource && 'cursor-grabbing opacity-65',
+      )}
+      aria-label={'Drag to reorder ' + componentLabels[id]}
+      ref={ref}
+      tabIndex={0}
+    >
+      {children}
+    </div>
+  )
+}
 
 function ProfileSection({
   children,
@@ -72,20 +130,34 @@ function ProfileSection({
 function RepositoryCard({
   compact,
   developer,
+  index,
   repository,
 }: {
   compact: boolean
   developer: boolean
+  index: number
   repository: Repository
 }) {
+  const { isDragSource, isDropTarget, ref } = useItemSortable(
+    repository.id,
+    index,
+    'repositories',
+    repository.name + ' repository',
+  )
+
   return (
     <Card
+      aria-label={'Drag to reorder ' + repository.name + ' repository'}
       className={cn(
-        'gap-0 rounded-xl border p-3.5 shadow-none ring-0',
+        'touch-pan-y cursor-grab gap-0 rounded-xl border p-3.5 shadow-none ring-0 select-none focus-visible:outline-1 focus-visible:-outline-offset-1',
+        isDropTarget && 'outline-1 -outline-offset-1',
+        isDragSource && 'cursor-grabbing opacity-65',
         developer
-          ? 'border-developer-border bg-developer-panel text-inherit'
-          : 'border-profile-border bg-profile-panel',
+          ? 'border-developer-border bg-developer-panel text-inherit outline-developer-muted/60'
+          : 'border-profile-border bg-profile-panel outline-stone-500/50',
       )}
+      ref={ref}
+      tabIndex={0}
     >
       <div
         className={cn(
@@ -129,145 +201,288 @@ function RepositoryCard({
   )
 }
 
+const socialIcons = {
+  email: Mail,
+  linkedin: GitBranch,
+  portfolio: Globe2,
+} satisfies Record<SocialId, typeof Mail>
+
+function SocialCard({
+  compact,
+  developer,
+  index,
+  link,
+  theme,
+}: {
+  compact: boolean
+  developer: boolean
+  index: number
+  link: SocialLink
+  theme: Theme
+}) {
+  const Icon = socialIcons[link.id]
+  const { isDragSource, isDropTarget, ref } = useItemSortable(
+    link.id,
+    index,
+    'socials',
+    link.value + ' social link',
+  )
+
+  return (
+    <Card
+      aria-label={'Drag to reorder ' + link.value + ' social link'}
+      className={cn(
+        'min-w-0 touch-pan-y cursor-grab rounded-xl border shadow-none ring-0 select-none focus-visible:outline-1 focus-visible:-outline-offset-1',
+        compact
+          ? 'grid grid-cols-[14px_minmax(0,1fr)] items-center gap-x-1 gap-y-0 px-1.5 py-1 text-left'
+          : 'grid grid-cols-[auto_minmax(0,1fr)] gap-x-2 gap-y-1 p-2.5',
+        isDropTarget && 'outline-1 -outline-offset-1',
+        isDragSource && 'cursor-grabbing opacity-65',
+        developer
+          ? 'border-developer-border bg-developer-panel text-inherit outline-developer-muted/60'
+          : 'border-profile-border bg-profile-panel outline-stone-500/50',
+      )}
+      ref={ref}
+      tabIndex={0}
+    >
+      <Icon
+        aria-hidden="true"
+        className={cn('row-span-2 size-3.5 self-center', theme.textClass)}
+      />
+      <small
+        className={cn(
+          'w-full overflow-hidden text-[7px] leading-tight text-ellipsis whitespace-nowrap',
+          developer ? 'text-developer-muted' : 'text-profile-muted',
+        )}
+      >
+        {link.value}
+      </small>
+      <strong className="w-full overflow-hidden text-[8px] leading-tight text-ellipsis whitespace-nowrap">
+        {link.label}
+      </strong>
+    </Card>
+  )
+}
+
 function ProfileHeader({
   compact,
   developer,
   minimal,
+  profileElements,
   theme,
 }: {
   compact: boolean
   developer: boolean
   minimal: boolean
+  profileElements: Record<ProfileElementId, boolean>
   theme: Theme
 }) {
+  const showDetails =
+    profileElements.name ||
+    profileElements.availability ||
+    profileElements.username ||
+    profileElements.role
+
   return (
-    <header
+    <div
       className={cn(
-        'relative grid grid-cols-[auto_1fr_auto] items-center gap-4 border-b px-8 py-7 max-[600px]:grid-cols-[auto_1fr] max-[600px]:px-5 max-[600px]:py-5',
-        compact && 'grid-cols-[auto_1fr] px-5 py-5',
-        developer ? 'border-developer-border' : 'border-profile-border',
+        'relative flex items-center gap-4',
+        compact && 'gap-3',
       )}
     >
-      <div
-        aria-label={profile.name + ' avatar placeholder'}
-        className={cn(
-          'relative grid size-[76px] place-items-center rounded-3xl border-[5px] border-white bg-linear-to-br to-brand-ink text-white shadow-profile-avatar max-[600px]:size-[62px] max-[600px]:rounded-2xl',
-          theme.gradientClass,
-          minimal && 'rounded-full',
-          developer && 'border-developer-canvas to-developer-highlight',
-          compact && 'size-[62px] rounded-2xl',
-        )}
-      >
-        <span className="text-[23px] font-bold tracking-[-0.06em]">
-          {profile.initials}
-        </span>
-        <i
-          className={cn(
-            'absolute -right-0.5 -bottom-0.5 size-4 rounded-full border-4 bg-emerald-500',
-            developer ? 'border-developer-canvas' : 'border-white',
-          )}
-        />
-      </div>
-
-      <div>
+      {profileElements.avatar && (
         <div
+          aria-label={profile.name + ' avatar placeholder'}
           className={cn(
-            'flex items-center gap-2.5 max-[600px]:flex-col max-[600px]:items-start max-[600px]:gap-1.5',
-            compact && 'flex-col items-start gap-1.5',
+            'relative grid size-[76px] shrink-0 place-items-center rounded-3xl border-[5px] border-white bg-linear-to-br to-brand-ink text-white shadow-profile-avatar max-[600px]:size-[62px] max-[600px]:rounded-2xl',
+            theme.gradientClass,
+            minimal && 'rounded-full',
+            developer && 'border-developer-canvas to-developer-highlight',
+            compact && 'size-[62px] rounded-2xl',
           )}
         >
-          <h1 className="[overflow-wrap:anywhere] text-[clamp(24px,4cqw,36px)] leading-none font-semibold tracking-[-0.06em]">
-            {profile.name}
-          </h1>
-          <Badge
+          <span className="text-[23px] font-bold tracking-[-0.06em]">
+            {profile.initials}
+          </span>
+          <i
             className={cn(
-              'border',
-              theme.borderClass,
-              developer ? 'bg-white/10' : theme.softClass,
-              theme.textClass,
+              'absolute -right-0.5 -bottom-0.5 size-4 rounded-full border-4 bg-emerald-500',
+              developer ? 'border-developer-canvas' : 'border-white',
+            )}
+          />
+        </div>
+      )}
+
+      {showDetails && (
+        <div className="min-w-0 flex-1">
+          <div
+            className={cn(
+              'flex items-center gap-2.5 max-[600px]:flex-col max-[600px]:items-start max-[600px]:gap-1.5',
+              compact && 'flex-col items-start gap-1.5',
             )}
           >
-            Open to build
-          </Badge>
+            {profileElements.name && (
+              <h1 className="[overflow-wrap:anywhere] text-[clamp(24px,4cqw,36px)] leading-none font-semibold tracking-[-0.06em]">
+                {profile.name}
+              </h1>
+            )}
+            {profileElements.availability && (
+              <Badge
+                className={cn(
+                  'border',
+                  theme.borderClass,
+                  developer ? 'bg-white/10' : theme.softClass,
+                  theme.textClass,
+                )}
+              >
+                Open to build
+              </Badge>
+            )}
+          </div>
+          {profileElements.username && (
+            <p
+              className={cn(
+                'mt-2 mb-1 text-xs font-semibold',
+                theme.textClass,
+              )}
+            >
+              @{profile.username}
+            </p>
+          )}
+          {profileElements.role && (
+            <strong
+              className={cn(
+                'text-xs font-medium',
+                developer ? 'text-developer-muted' : 'text-profile-muted',
+              )}
+            >
+              {profile.role}
+            </strong>
+          )}
         </div>
-        <p className={cn('mt-2 mb-1 text-xs font-semibold', theme.textClass)}>
-          @{profile.username}
-        </p>
-        <strong
+      )}
+
+      {profileElements.githubMark && (
+        <span
           className={cn(
-            'text-xs font-medium',
-            developer ? 'text-developer-muted' : 'text-profile-muted',
+            'ml-auto grid size-10 shrink-0 place-items-center rounded-xl border max-[600px]:hidden',
+            compact && 'hidden',
+            developer
+              ? 'border-developer-border bg-developer-panel'
+              : 'border-profile-border bg-stone-50',
           )}
         >
-          {profile.role}
-        </strong>
-      </div>
-
-      <span
-        className={cn(
-          'grid size-10 place-items-center rounded-xl border max-[600px]:hidden',
-          compact && 'hidden',
-          developer
-            ? 'border-developer-border bg-developer-panel'
-            : 'border-profile-border bg-stone-50',
-        )}
-      >
-        <GitBranch aria-hidden="true" className="size-4" />
-      </span>
-    </header>
+          <GitBranch aria-hidden="true" className="size-4" />
+        </span>
+      )}
+    </div>
   )
 }
 
 function StatsSection({
   compact,
   developer,
+  onReorder,
+  order,
 }: {
   compact: boolean
   developer: boolean
+  onReorder: (activeId: StatId, targetId: StatId) => void
+  order: StatId[]
 }) {
-  const metrics = [
-    [profile.repositories, 'Repositories'],
-    ['1.2k', 'Followers'],
-    [profile.following, 'Following'],
-    ['1,086', 'Contributions'],
-  ]
+  const metricsById = new Map(profileStats.map((metric) => [metric.id, metric]))
+  const orderedMetrics = order.flatMap((id) => {
+    const metric = metricsById.get(id)
+    return metric ? [metric] : []
+  })
+
+  return (
+    <SortableSurface items={order} onReorder={onReorder} surface="stats">
+      <div
+        className={cn(
+          'grid grid-cols-4 gap-px overflow-hidden rounded-xl ring-1 max-[600px]:grid-cols-2',
+          compact && 'grid-cols-2',
+          developer
+            ? 'bg-developer-border ring-developer-border'
+            : 'bg-profile-border ring-profile-border',
+        )}
+        data-nested-dnd
+      >
+        {orderedMetrics.map((metric, index) => (
+          <SortableMetric
+            developer={developer}
+            index={index}
+            key={metric.id}
+            metric={metric}
+          />
+        ))}
+      </div>
+    </SortableSurface>
+  )
+}
+
+function SortableMetric({
+  developer,
+  index,
+  metric,
+}: {
+  developer: boolean
+  index: number
+  metric: (typeof profileStats)[number]
+}) {
+  const { isDragSource, isDropTarget, ref } = useItemSortable(
+    metric.id,
+    index,
+    'stats',
+    metric.label + ' statistic',
+  )
 
   return (
     <div
+      aria-label={'Drag to reorder ' + metric.label + ' statistic'}
       className={cn(
-        'grid grid-cols-4 gap-px overflow-hidden rounded-xl ring-1 max-[600px]:grid-cols-2',
-        compact && 'grid-cols-2',
+        'touch-pan-y cursor-grab p-4 select-none focus-visible:outline-1 focus-visible:-outline-offset-1',
+        isDropTarget && 'outline-1 -outline-offset-1',
+        isDragSource && 'cursor-grabbing opacity-65',
         developer
-          ? 'bg-developer-border ring-developer-border'
-          : 'bg-profile-border ring-profile-border',
+          ? 'bg-developer-panel outline-developer-muted/60'
+          : 'bg-profile-subtle outline-stone-500/50',
       )}
+      ref={ref}
+      tabIndex={0}
     >
-      {metrics.map(([value, label]) => (
-        <div
-          className={cn(
-            'p-4',
-            developer ? 'bg-developer-panel' : 'bg-profile-subtle',
-          )}
-          key={label}
-        >
-          <strong className="mb-1 block text-lg tracking-[-0.04em]">
-            {value}
-          </strong>
-          <span
-            className={cn(
-              'block text-[9px]',
-              developer ? 'text-developer-muted' : 'text-profile-muted',
-            )}
-          >
-            {label}
-          </span>
-        </div>
-      ))}
+      <strong className="mb-1 block text-lg tracking-[-0.04em]">
+        {metric.value}
+      </strong>
+      <span
+        className={cn(
+          'block text-[9px]',
+          developer ? 'text-developer-muted' : 'text-profile-muted',
+        )}
+      >
+        {metric.label}
+      </span>
     </div>
   )
 }
 
-function LanguagesSection({ developer }: { developer: boolean }) {
+function LanguagesSection({
+  developer,
+  onReorder,
+  order,
+}: {
+  developer: boolean
+  onReorder: (activeId: LanguageId, targetId: LanguageId) => void
+  order: LanguageId[]
+}) {
+  const languagesById = new Map(
+    languages.map((language) => [language.id, language]),
+  )
+  const orderedLanguages = order.flatMap((id) => {
+    const language = languagesById.get(id)
+    return language ? [language] : []
+  })
+
   return (
     <>
       <div
@@ -277,7 +492,7 @@ function LanguagesSection({ developer }: { developer: boolean }) {
           developer ? 'bg-developer-border' : 'bg-stone-200',
         )}
       >
-        {languages.map((language) => (
+        {orderedLanguages.map((language) => (
           <span
             className={cn(
               'h-full border-l-2 first:border-l-0',
@@ -285,30 +500,74 @@ function LanguagesSection({ developer }: { developer: boolean }) {
               language.colorClass,
               language.widthClass,
             )}
-            key={language.name}
+            key={language.id}
           />
         ))}
       </div>
-      <div className="mt-2.5 flex flex-wrap gap-x-4 gap-y-2">
-        {languages.map((language) => (
-          <span
-            className="inline-flex items-center gap-1.5 text-[9px] font-semibold"
-            key={language.name}
-          >
-            <i className={cn('size-1.5 rounded-full', language.colorClass)} />
-            {language.name}
-            <small
-              className={cn(
-                'text-[8px]',
-                developer ? 'text-developer-muted' : 'text-profile-muted',
-              )}
-            >
-              {language.percentage}%
-            </small>
-          </span>
-        ))}
-      </div>
+      <SortableSurface
+        items={order}
+        onReorder={onReorder}
+        surface="languages"
+      >
+        <div
+          className="mt-2.5 flex flex-wrap gap-x-4 gap-y-2"
+          data-nested-dnd
+        >
+          {orderedLanguages.map((language, index) => (
+            <SortableLanguage
+              developer={developer}
+              index={index}
+              key={language.id}
+              language={language}
+            />
+          ))}
+        </div>
+      </SortableSurface>
     </>
+  )
+}
+
+function SortableLanguage({
+  developer,
+  index,
+  language,
+}: {
+  developer: boolean
+  index: number
+  language: (typeof languages)[number]
+}) {
+  const { isDragSource, isDropTarget, ref } = useItemSortable(
+    language.id,
+    index,
+    'languages',
+    language.name + ' language',
+  )
+
+  return (
+    <span
+      aria-label={'Drag to reorder ' + language.name + ' language'}
+      className={cn(
+        'inline-flex touch-pan-y cursor-grab items-center gap-1.5 rounded text-[9px] font-semibold select-none focus-visible:outline-1 focus-visible:-outline-offset-1',
+        isDropTarget && 'outline-1 -outline-offset-1',
+        isDragSource && 'cursor-grabbing opacity-65',
+        developer
+          ? 'outline-developer-muted/60'
+          : 'outline-stone-500/50',
+      )}
+      ref={ref}
+      tabIndex={0}
+    >
+      <i className={cn('size-1.5 rounded-full', language.colorClass)} />
+      {language.name}
+      <small
+        className={cn(
+          'text-[8px]',
+          developer ? 'text-developer-muted' : 'text-profile-muted',
+        )}
+      >
+        {language.percentage}%
+      </small>
+    </span>
   )
 }
 
@@ -365,17 +624,52 @@ function ContributionSection({
 }
 
 export function ProfileCard({
+  collectionOrders,
   compact,
   enabled,
+  onReorder,
+  onReorderLanguages,
+  onReorderRepositories,
+  onReorderSocials,
+  onReorderStats,
   order,
+  profileElements,
   template,
   themeIndex,
 }: ProfileCardProps) {
   const developer = template === 'developer'
   const minimal = template === 'minimal'
   const theme = themeOptions[themeIndex]
+  const hasVisibleProfileElement = Object.values(profileElements).some(Boolean)
+  const visibleOrder = order.filter(
+    (id) =>
+      enabled[id] && (id !== 'identity' || hasVisibleProfileElement),
+  )
+  const repositoriesById = new Map(
+    repositories.map((repository) => [repository.id, repository]),
+  )
+  const orderedRepositories = collectionOrders.repositories.flatMap((id) => {
+    const repository = repositoriesById.get(id)
+    return repository ? [repository] : []
+  })
+  const socialLinksById = new Map(
+    socialLinks.map((link) => [link.id, link]),
+  )
+  const orderedSocialLinks = collectionOrders.socials.flatMap((id) => {
+    const link = socialLinksById.get(id)
+    return link ? [link] : []
+  })
 
   const sections: Record<ComponentId, ReactNode> = {
+    identity: (
+      <ProfileHeader
+        compact={compact}
+        developer={developer}
+        minimal={minimal}
+        profileElements={profileElements}
+        theme={theme}
+      />
+    ),
     about: (
       <ProfileSection developer={developer} id="about">
         <p className="max-w-3xl [overflow-wrap:anywhere] text-[15px] leading-relaxed tracking-[-0.015em]">
@@ -398,31 +692,48 @@ export function ProfileCard({
     ),
     stats: (
       <ProfileSection developer={developer} id="stats">
-        <StatsSection compact={compact} developer={developer} />
+        <StatsSection
+          compact={compact}
+          developer={developer}
+          onReorder={onReorderStats}
+          order={collectionOrders.stats}
+        />
       </ProfileSection>
     ),
     languages: (
       <ProfileSection developer={developer} id="languages">
-        <LanguagesSection developer={developer} />
+        <LanguagesSection
+          developer={developer}
+          onReorder={onReorderLanguages}
+          order={collectionOrders.languages}
+        />
       </ProfileSection>
     ),
     repositories: (
       <ProfileSection developer={developer} id="repositories">
-        <div
-          className={cn(
-            'grid grid-cols-3 gap-2 max-[600px]:grid-cols-1',
-            compact && 'grid-cols-1',
-          )}
+        <SortableSurface
+          items={collectionOrders.repositories}
+          onReorder={onReorderRepositories}
+          surface="repositories"
         >
-          {repositories.map((repository) => (
-            <RepositoryCard
-              compact={compact}
-              developer={developer}
-              key={repository.name}
-              repository={repository}
-            />
-          ))}
-        </div>
+          <div
+            className={cn(
+              'grid grid-cols-3 gap-2 max-[600px]:grid-cols-1',
+              compact && 'grid-cols-1',
+            )}
+            data-nested-dnd
+          >
+            {orderedRepositories.map((repository, index) => (
+              <RepositoryCard
+                compact={compact}
+                developer={developer}
+                index={index}
+                key={repository.id}
+                repository={repository}
+              />
+            ))}
+          </div>
+        </SortableSurface>
       </ProfileSection>
     ),
     contributions: (
@@ -436,46 +747,30 @@ export function ProfileCard({
     ),
     socials: (
       <ProfileSection developer={developer} id="socials">
-        <div
-          className={cn(
-            'grid grid-cols-3 gap-2',
-            compact && 'gap-1.5',
-          )}
+        <SortableSurface
+          items={collectionOrders.socials}
+          onReorder={onReorderSocials}
+          surface="socials"
         >
-          {socialLinks.map((link, index) => {
-            const Icon = index === 0 ? Globe2 : index === 1 ? GitBranch : Mail
-            return (
-              <Card
-                className={cn(
-                  'min-w-0 rounded-xl border shadow-none ring-0',
-                  compact
-                    ? 'grid grid-cols-[14px_minmax(0,1fr)] items-center gap-x-1 gap-y-0 px-1.5 py-1 text-left'
-                    : 'grid grid-cols-[auto_minmax(0,1fr)] gap-x-2 gap-y-1 p-2.5',
-                  developer
-                    ? 'border-developer-border bg-developer-panel text-inherit'
-                    : 'border-profile-border bg-profile-panel',
-                )}
-                key={link.value}
-              >
-                <Icon
-                  aria-hidden="true"
-                  className={cn('row-span-2 size-3.5 self-center', theme.textClass)}
-                />
-                <small
-                  className={cn(
-                    'w-full overflow-hidden text-[7px] leading-tight text-ellipsis whitespace-nowrap',
-                    developer ? 'text-developer-muted' : 'text-profile-muted',
-                  )}
-                >
-                  {link.value}
-                </small>
-                <strong className="w-full overflow-hidden text-[8px] leading-tight text-ellipsis whitespace-nowrap">
-                  {link.label}
-                </strong>
-              </Card>
-            )
-          })}
-        </div>
+          <div
+            className={cn(
+              'grid grid-cols-3 gap-2',
+              compact && 'gap-1.5',
+            )}
+            data-nested-dnd
+          >
+            {orderedSocialLinks.map((link, index) => (
+              <SocialCard
+                compact={compact}
+                developer={developer}
+                index={index}
+                key={link.id}
+                link={link}
+                theme={theme}
+              />
+            ))}
+          </div>
+        </SortableSurface>
       </ProfileSection>
     ),
   }
@@ -503,23 +798,29 @@ export function ProfileCard({
         />
       )}
 
-      <ProfileHeader
-        compact={compact}
-        developer={developer}
-        minimal={minimal}
-        theme={theme}
-      />
-
-      <div
-        className={cn(
-          'relative grid gap-6 px-8 py-6 max-[600px]:px-5 max-[600px]:py-5',
-          compact && 'px-5 py-5',
-        )}
+      <SortableSurface
+        items={visibleOrder}
+        onReorder={onReorder}
+        surface="preview"
       >
-        {order.map((id) =>
-          enabled[id] ? <div key={id}>{sections[id]}</div> : null,
-        )}
-      </div>
+        <div
+          className={cn(
+            'relative grid gap-6 px-8 py-6 max-[600px]:px-5 max-[600px]:py-5',
+            compact && 'px-5 py-5',
+          )}
+        >
+          {visibleOrder.map((id, index) => (
+            <SortablePreviewSection
+              developer={developer}
+              id={id}
+              index={index}
+              key={id}
+            >
+              {sections[id]}
+            </SortablePreviewSection>
+          ))}
+        </div>
+      </SortableSurface>
 
       <footer
         className={cn(
