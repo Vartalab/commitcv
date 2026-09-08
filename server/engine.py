@@ -128,10 +128,20 @@ def generate_portfolio(data: PortfolioRequest) -> PortfolioResponse:
     contributions = None
 
     if data.include_contributions:
-        contribution_total = fetch_contributions(data.username)
+
+        period, start_date, end_date = get_contribution_period(data)
+
+        contribution_total = fetch_contributions(
+            data.username,
+            start_date,
+            end_date
+        )
 
         contributions = Contributions(
-            total=contribution_total
+            total=contribution_total,
+            period=period,
+            start_date=start_date.isoformat(),
+            end_date=end_date.isoformat()
         )
 
     enabled_sections = ["Profile"]
@@ -156,6 +166,103 @@ def generate_portfolio(data: PortfolioRequest) -> PortfolioResponse:
         languages=languages,
         contributions=contributions
     )
+
+
+def get_contribution_period(
+    data: PortfolioRequest
+) -> tuple[str, date, date]:
+
+    today = date.today()
+
+    if data.contribution_period == "30_days":
+        start_date = today - timedelta(days=30)
+
+    elif data.contribution_period == "3_months":
+        start_date = subtract_months(today, 3)
+
+    elif data.contribution_period == "6_months":
+        start_date = subtract_months(today, 6)
+
+    elif data.contribution_period == "1_year":
+        start_date = subtract_months(today, 12)
+
+    elif data.contribution_period == "this_year":
+        start_date = date(today.year, 1, 1)
+
+    elif data.contribution_period == "custom":
+
+        if not data.contribution_start or not data.contribution_end:
+            raise GitHubAPIError(
+                "INVALID_CONTRIBUTION_PERIOD",
+                "Custom contribution period requires both start and end dates"
+            )
+
+        try:
+            start_date = date.fromisoformat(
+                data.contribution_start
+            )
+            end_date = date.fromisoformat(
+                data.contribution_end
+            )
+
+        except ValueError:
+            raise GitHubAPIError(
+                "INVALID_CONTRIBUTION_PERIOD",
+                "Contribution dates must use YYYY-MM-DD format"
+            )
+
+        if start_date > end_date:
+            raise GitHubAPIError(
+                "INVALID_CONTRIBUTION_PERIOD",
+                "Contribution start date cannot be after end date"
+            )
+
+        if end_date > today:
+            raise GitHubAPIError(
+                "INVALID_CONTRIBUTION_PERIOD",
+                "Contribution end date cannot be in the future"
+            )
+
+        return "custom", start_date, end_date
+
+    else:
+        raise GitHubAPIError(
+            "INVALID_CONTRIBUTION_PERIOD",
+            "Invalid contribution period"
+        )
+
+    return data.contribution_period, start_date, today
+
+
+def subtract_months(original_date: date, months: int) -> date:
+
+    year = original_date.year
+    month = original_date.month - months
+
+    while month <= 0:
+        month += 12
+        year -= 1
+
+    return date(
+        year,
+        month,
+        min(
+            original_date.day,
+            days_in_month(year, month)
+        )
+    )
+
+
+def days_in_month(year: int, month: int) -> int:
+
+    if month == 12:
+        next_month = date(year + 1, 1, 1)
+    else:
+        next_month = date(year, month + 1, 1)
+
+    current_month = date(year, month, 1)
+
+    return (next_month - current_month).days
 
 
 def fetch_github_profile(username: str):
@@ -261,10 +368,11 @@ def fetch_repositories(username: str):
     return repos
 
 
-def fetch_contributions(username: str) -> int:
-
-    today = date.today()
-    one_year_ago = today - timedelta(days=365)
+def fetch_contributions(
+    username: str,
+    start_date: date,
+    end_date: date
+) -> int:
 
     query = """
     query($username: String!, $from: DateTime!, $to: DateTime!) {
@@ -283,8 +391,8 @@ def fetch_contributions(username: str) -> int:
 
     variables = {
         "username": username,
-        "from": f"{one_year_ago.isoformat()}T00:00:00Z",
-        "to": f"{today.isoformat()}T23:59:59Z"
+        "from": f"{start_date.isoformat()}T00:00:00Z",
+        "to": f"{end_date.isoformat()}T23:59:59Z"
     }
 
     url = "https://api.github.com/graphql"
