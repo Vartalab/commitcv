@@ -1,13 +1,13 @@
 import type { ComponentType } from 'react'
 import {
   BarChart3,
-  ChevronDown,
-  ChevronUp,
   FolderGit2,
+  GripVertical,
   Languages,
   LayoutTemplate,
   Link2,
   Rows3,
+  SlidersHorizontal,
   UserRound,
 } from 'lucide-react'
 
@@ -17,15 +17,26 @@ import { Card } from '@/components/ui/card'
 import { Switch } from '@/components/ui/switch'
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
 import {
+  SortableSurface,
+  useSectionSortable,
+} from '@/components/sortable-surface'
+import {
   componentLabels,
+  profile,
+  profileElementIds,
+  profileElementLabels,
   templateOptions,
+  textSizeOptions,
   themeOptions,
   type ComponentId,
+  type ProfileElementId,
   type TemplateId,
+  type TextSizeId,
 } from '@/data/profile'
 import { cn } from '@/lib/utils'
 
 const icons: Record<ComponentId, ComponentType<{ className?: string }>> = {
+  identity: UserRound,
   about: UserRound,
   stats: BarChart3,
   languages: Languages,
@@ -37,61 +48,74 @@ const icons: Record<ComponentId, ComponentType<{ className?: string }>> = {
 type BuilderSidebarProps = {
   enabled: Record<ComponentId, boolean>
   order: ComponentId[]
+  profileElements: Record<ProfileElementId, boolean>
   template: TemplateId
+  textSize: TextSizeId
   themeIndex: number
   onToggle: (id: ComponentId) => void
-  onMove: (id: ComponentId, direction: -1 | 1) => void
+  onToggleProfileElement: (id: ProfileElementId) => void
+  onReorder: (activeId: ComponentId, targetId: ComponentId) => void
   onTemplateChange: (id: TemplateId) => void
+  onTextSizeChange: (id: TextSizeId) => void
   onThemeChange: (index: number) => void
 }
 
 type ComponentRowProps = {
   id: ComponentId
   index: number
-  total: number
   enabled: boolean
+  avatarClass: string
   onToggle: (id: ComponentId) => void
-  onMove: (id: ComponentId, direction: -1 | 1) => void
 }
 
 function ComponentRow({
   id,
   index,
-  total,
   enabled,
+  avatarClass,
   onToggle,
-  onMove,
 }: ComponentRowProps) {
   const Icon = icons[id]
   const label = componentLabels[id]
+  const { handleRef, isDragSource, isDropTarget, ref } = useSectionSortable(
+    id,
+    index,
+    'builder',
+  )
 
   return (
-    <div className="grid min-h-14 grid-cols-[24px_34px_1fr_auto] items-center gap-2 rounded-xl border border-transparent px-2 py-1.5 transition hover:border-stone-200 hover:bg-white hover:shadow-component-hover">
-      <span className="flex flex-col gap-0.5">
-        <Button
-          aria-label={'Move ' + label + ' up'}
-          className="size-5 rounded-sm text-stone-400 hover:bg-stone-200 hover:text-stone-900"
-          disabled={index === 0}
-          onClick={() => onMove(id, -1)}
-          size="icon-xs"
-          variant="ghost"
-        >
-          <ChevronUp aria-hidden="true" className="size-3" />
-        </Button>
-        <Button
-          aria-label={'Move ' + label + ' down'}
-          className="size-5 rounded-sm text-stone-400 hover:bg-stone-200 hover:text-stone-900"
-          disabled={index === total - 1}
-          onClick={() => onMove(id, 1)}
-          size="icon-xs"
-          variant="ghost"
-        >
-          <ChevronDown aria-hidden="true" className="size-3" />
-        </Button>
-      </span>
+    <div
+      className={cn(
+        'grid min-h-14 touch-pan-y grid-cols-[24px_34px_minmax(0,1fr)_auto] items-center gap-2 rounded-xl border border-transparent px-2 py-1.5 transition-[border-color,background-color,box-shadow,opacity] select-none hover:border-stone-200 hover:bg-white hover:shadow-component-hover',
+        isDropTarget && 'border-stone-300 bg-white shadow-component-hover',
+        isDragSource && 'cursor-grabbing opacity-70',
+      )}
+      ref={ref}
+    >
+      <Button
+        aria-label={'Drag to reorder ' + label}
+        className="size-6 touch-none cursor-grab rounded-md text-stone-400 hover:bg-stone-200 hover:text-stone-900 active:cursor-grabbing"
+        data-drag-handle
+        ref={handleRef}
+        size="icon-xs"
+        variant="ghost"
+      >
+        <GripVertical aria-hidden="true" className="size-3.5" />
+      </Button>
 
-      <span className="grid size-8 place-items-center rounded-lg bg-stone-100 text-stone-600">
-        <Icon aria-hidden="true" className="size-4" />
+      <span
+        className={cn(
+          'grid size-8 place-items-center rounded-lg bg-stone-100 text-stone-600',
+          id === 'identity' &&
+            'bg-linear-to-br to-brand-ink text-[10px] font-bold text-white',
+          id === 'identity' && avatarClass,
+        )}
+      >
+        {id === 'identity' ? (
+          profile.initials
+        ) : (
+          <Icon aria-hidden="true" className="size-4" />
+        )}
       </span>
 
       <label
@@ -104,6 +128,7 @@ function ComponentRow({
       <Switch
         aria-label={'Show ' + label}
         checked={enabled}
+        data-no-drag
         id={id}
         onCheckedChange={() => onToggle(id)}
       />
@@ -120,6 +145,8 @@ function TemplateThumbnail({ template }: { template: TemplateId }) {
         template === 'minimal' && 'bg-stone-100',
         template === 'modern' && 'bg-orange-50',
         template === 'developer' && 'bg-developer-thumbnail',
+        template === 'editorial' && 'bg-amber-50',
+        template === 'midnight' && 'bg-slate-950',
       )}
     >
       <i
@@ -127,18 +154,24 @@ function TemplateThumbnail({ template }: { template: TemplateId }) {
           'h-2 w-[45%] rounded-full bg-stone-400',
           template === 'modern' && 'bg-orange-500',
           template === 'developer' && 'bg-emerald-400',
+          template === 'editorial' && 'bg-amber-700',
+          template === 'midnight' && 'bg-sky-400',
         )}
       />
       <i
         className={cn(
           'h-1 w-[85%] rounded-full bg-stone-300',
           template === 'developer' && 'bg-slate-600',
+          template === 'editorial' && 'bg-amber-200',
+          template === 'midnight' && 'bg-indigo-700',
         )}
       />
       <i
         className={cn(
           'h-1 w-2/3 rounded-full bg-stone-300',
           template === 'developer' && 'bg-slate-600',
+          template === 'editorial' && 'bg-amber-200',
+          template === 'midnight' && 'bg-indigo-700',
         )}
       />
     </span>
@@ -148,11 +181,15 @@ function TemplateThumbnail({ template }: { template: TemplateId }) {
 export function BuilderSidebar({
   enabled,
   order,
+  profileElements,
   template,
+  textSize,
   themeIndex,
   onToggle,
-  onMove,
+  onToggleProfileElement,
+  onReorder,
   onTemplateChange,
+  onTextSizeChange,
   onThemeChange,
 }: BuilderSidebarProps) {
   const activeCount = Object.values(enabled).filter(Boolean).length
@@ -169,7 +206,9 @@ export function BuilderSidebar({
               Make it yours
             </h2>
           </div>
-          <Badge variant="secondary">{activeCount}/6</Badge>
+          <Badge variant="secondary">
+            {activeCount}/{order.length}
+          </Badge>
         </div>
 
         <Tabs defaultValue="components" className="w-full">
@@ -183,19 +222,62 @@ export function BuilderSidebar({
           </TabsList>
 
           <TabsContent value="components" className="mt-5">
-            <div className="flex flex-col gap-1 max-[760px]:grid max-[760px]:grid-cols-2 max-[460px]:grid-cols-1">
-              {order.map((id, index) => (
-                <ComponentRow
-                  enabled={enabled[id]}
-                  id={id}
-                  index={index}
-                  key={id}
-                  onMove={onMove}
-                  onToggle={onToggle}
-                  total={order.length}
+            <SortableSurface
+              items={order}
+              onReorder={onReorder}
+              surface="builder"
+            >
+              <div className="flex flex-col gap-1 max-[760px]:grid max-[760px]:grid-cols-2 max-[460px]:grid-cols-1">
+                {order.map((id, index) => (
+                  <ComponentRow
+                    avatarClass={themeOptions[themeIndex].gradientClass}
+                    enabled={enabled[id]}
+                    id={id}
+                    index={index}
+                    key={id}
+                    onToggle={onToggle}
+                  />
+                ))}
+              </div>
+            </SortableSurface>
+
+            <Card className="mt-3 gap-2.5 rounded-xl border border-stone-200 bg-white p-3 shadow-none ring-0">
+              <div className="flex items-start gap-2">
+                <SlidersHorizontal
+                  aria-hidden="true"
+                  className="mt-0.5 size-3.5 shrink-0 text-stone-500"
                 />
-              ))}
-            </div>
+                <div>
+                  <strong className="block text-[11px]">Profile elements</strong>
+                  <p className="mt-0.5 text-[9px] leading-snug text-stone-500">
+                    Fine-tune the header without changing its responsive layout.
+                  </p>
+                </div>
+              </div>
+
+              <div className="grid grid-cols-2 gap-1.5">
+                {profileElementIds.map((id) => (
+                  <div
+                    className="grid min-w-0 grid-cols-[minmax(0,1fr)_auto] items-center gap-1.5 rounded-lg bg-stone-100 px-2 py-1.5"
+                    key={id}
+                  >
+                    <label
+                      className="overflow-hidden text-[9px] font-medium text-ellipsis whitespace-nowrap"
+                      htmlFor={`profile-element-${id}`}
+                    >
+                      {profileElementLabels[id]}
+                    </label>
+                    <Switch
+                      aria-label={`Show ${profileElementLabels[id]}`}
+                      checked={profileElements[id]}
+                      id={`profile-element-${id}`}
+                      onCheckedChange={() => onToggleProfileElement(id)}
+                      size="sm"
+                    />
+                  </div>
+                ))}
+              </div>
+            </Card>
 
             <Card className="mt-5 flex-row gap-2 rounded-xl border border-builder-note-border bg-builder-note-surface p-3 text-builder-note-foreground shadow-none ring-0 max-[760px]:hidden">
               <LayoutTemplate
@@ -207,7 +289,8 @@ export function BuilderSidebar({
                   README-friendly layout
                 </strong>
                 <p className="mt-1 text-[10px] leading-relaxed">
-                  Reordering changes section order—not free x and y positioning.
+                  Reorder sections and repeated items without changing the
+                  responsive layout.
                 </p>
               </div>
             </Card>
@@ -239,7 +322,7 @@ export function BuilderSidebar({
               ))}
             </div>
 
-            <div className="mt-5 flex items-center justify-between border-t border-stone-200 pt-4">
+            <div className="mt-5 flex items-center justify-between gap-3 border-t border-stone-200 pt-4">
               <div>
                 <p className="mb-1 text-[10px] font-bold tracking-[0.12em] text-stone-500 uppercase">
                   Accent
@@ -250,7 +333,7 @@ export function BuilderSidebar({
               </div>
               <div
                 aria-label="Accent colour"
-                className="flex gap-2"
+                className="flex max-w-40 flex-wrap justify-end gap-2"
                 role="radiogroup"
               >
                 {themeOptions.map((option, index) => (
@@ -268,6 +351,35 @@ export function BuilderSidebar({
                     size="icon-xs"
                     variant="ghost"
                   />
+                ))}
+              </div>
+            </div>
+
+            <div className="mt-4 border-t border-stone-200 pt-4">
+              <p className="mb-2 text-[10px] font-bold tracking-[0.12em] text-stone-500 uppercase">
+                Text size
+              </p>
+              <div
+                aria-label="Profile text size"
+                className="grid grid-cols-3 gap-1 rounded-xl bg-stone-100 p-1"
+                role="radiogroup"
+              >
+                {textSizeOptions.map((option) => (
+                  <Button
+                    aria-checked={textSize === option.id}
+                    className={cn(
+                      'h-8 rounded-lg px-2 text-[11px] text-stone-500 shadow-none hover:bg-white hover:text-stone-900',
+                      textSize === option.id &&
+                        'bg-white text-stone-900 shadow-sm hover:bg-white',
+                    )}
+                    key={option.id}
+                    onClick={() => onTextSizeChange(option.id)}
+                    role="radio"
+                    size="sm"
+                    variant="ghost"
+                  >
+                    {option.label}
+                  </Button>
                 ))}
               </div>
             </div>
