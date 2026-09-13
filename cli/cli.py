@@ -1,4 +1,5 @@
 import requests
+import argparse
 from rich.console import Console
 from rich.status import Status
 
@@ -161,7 +162,7 @@ def print_result(data):
         print(f"To    : {c['end_date']}")
 
 
-def main():
+def generate_portfolio():
 
     show_logo()
 
@@ -230,11 +231,35 @@ def main():
     console.print("\n[bold green]Done![/bold green]")
 
 
+VERSION = "0.1.0"
+def main():
+
+    parser = argparse.ArgumentParser(
+        prog="commitcv",
+        description="GitHub Portfolio Generator"
+    )
+
+    parser.add_argument(
+        "--version",
+        action="version",
+        version=f"CommitCV {VERSION}"
+    )
+
+    subparsers = parser.add_subparsers(dest="command")
+
+    subparsers.add_parser(
+        "generate",
+        help="Generate GitHub portfolio"
+    )
+
+    args = parser.parse_args()
+
+    if args.command == "generate":
+        generate_portfolio()
+    else:
+        show_logo()
+        parser.print_help()
+
+
 if __name__ == "__main__":
-    while True:
-
-        main()
-
-        if not yes_no("\nGenerate another portfolio? (y/n): "):
-            console.print("\n[cyan]Thank you for using CommitCV CLI![/cyan]")
-            break
+    main()
