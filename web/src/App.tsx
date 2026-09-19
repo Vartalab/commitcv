@@ -1,4 +1,4 @@
-import { useState, type ReactNode } from 'react'
+import { useEffect, useState, type ReactNode } from 'react'
 import {
   Check,
   ChevronRight,
@@ -20,27 +20,21 @@ import { TooltipProvider } from '@/components/ui/tooltip'
 import {
   themeOptions,
   type ComponentId,
+  type LanguageId,
+  type ProfileElementId,
+  type RepositoryId,
+  type SocialId,
+  type StatId,
   type TemplateId,
+  type TextSizeId,
 } from '@/data/profile'
+import {
+  readBuilderPreferences,
+  reorderComponents,
+  reorderItems,
+  saveBuilderPreferences,
+} from '@/lib/builder-preferences'
 import { cn } from '@/lib/utils'
-
-const initialOrder: ComponentId[] = [
-  'about',
-  'stats',
-  'languages',
-  'repositories',
-  'contributions',
-  'socials',
-]
-
-const initialEnabled: Record<ComponentId, boolean> = {
-  about: true,
-  stats: true,
-  languages: true,
-  repositories: true,
-  contributions: true,
-  socials: true,
-}
 
 function FlowStep({
   active,
@@ -124,30 +118,125 @@ function ExportPanel({
 }
 
 function App() {
-  const [enabled, setEnabled] = useState(initialEnabled)
-  const [order, setOrder] = useState(initialOrder)
-  const [template, setTemplate] = useState<TemplateId>('modern')
-  const [themeIndex, setThemeIndex] = useState(0)
+  const [builderPreferences, setBuilderPreferences] = useState(
+    readBuilderPreferences,
+  )
   const [viewport, setViewport] = useState<'desktop' | 'mobile'>('desktop')
   const [exportMessage, setExportMessage] = useState('')
+  const {
+    collections,
+    enabled,
+    order,
+    profileElements,
+    template,
+    textSize,
+    themeIndex,
+  } = builderPreferences
+
+  useEffect(() => {
+    saveBuilderPreferences(builderPreferences)
+  }, [builderPreferences])
 
   const toggleComponent = (id: ComponentId) => {
-    setEnabled((current) => ({ ...current, [id]: !current[id] }))
+    setBuilderPreferences((current) => ({
+      ...current,
+      enabled: { ...current.enabled, [id]: !current.enabled[id] },
+    }))
   }
 
-  const moveComponent = (id: ComponentId, direction: -1 | 1) => {
-    setOrder((current) => {
-      const from = current.indexOf(id)
-      const to = from + direction
-      if (to < 0 || to >= current.length) return current
-
-      const next = [...current]
-      ;[next[from], next[to]] = [next[to], next[from]]
-      return next
-    })
+  const reorderComponent = (activeId: ComponentId, targetId: ComponentId) => {
+    setBuilderPreferences((current) => ({
+      ...current,
+      order: reorderComponents(current.order, activeId, targetId),
+    }))
   }
 
-  const activeCount = Object.values(enabled).filter(Boolean).length
+  const toggleProfileElement = (id: ProfileElementId) => {
+    setBuilderPreferences((current) => ({
+      ...current,
+      profileElements: {
+        ...current.profileElements,
+        [id]: !current.profileElements[id],
+      },
+    }))
+  }
+
+  const reorderLanguages = (activeId: LanguageId, targetId: LanguageId) => {
+    setBuilderPreferences((current) => ({
+      ...current,
+      collections: {
+        ...current.collections,
+        languages: reorderItems(
+          current.collections.languages,
+          activeId,
+          targetId,
+        ),
+      },
+    }))
+  }
+
+  const reorderRepositories = (
+    activeId: RepositoryId,
+    targetId: RepositoryId,
+  ) => {
+    setBuilderPreferences((current) => ({
+      ...current,
+      collections: {
+        ...current.collections,
+        repositories: reorderItems(
+          current.collections.repositories,
+          activeId,
+          targetId,
+        ),
+      },
+    }))
+  }
+
+  const reorderSocials = (activeId: SocialId, targetId: SocialId) => {
+    setBuilderPreferences((current) => ({
+      ...current,
+      collections: {
+        ...current.collections,
+        socials: reorderItems(current.collections.socials, activeId, targetId),
+      },
+    }))
+  }
+
+  const reorderStats = (activeId: StatId, targetId: StatId) => {
+    setBuilderPreferences((current) => ({
+      ...current,
+      collections: {
+        ...current.collections,
+        stats: reorderItems(current.collections.stats, activeId, targetId),
+      },
+    }))
+  }
+
+  const setTemplate = (nextTemplate: TemplateId) => {
+    setBuilderPreferences((current) => ({
+      ...current,
+      template: nextTemplate,
+    }))
+  }
+
+  const setTextSize = (nextTextSize: TextSizeId) => {
+    setBuilderPreferences((current) => ({
+      ...current,
+      textSize: nextTextSize,
+    }))
+  }
+
+  const setThemeIndex = (nextThemeIndex: number) => {
+    setBuilderPreferences((current) => ({
+      ...current,
+      themeIndex: nextThemeIndex,
+    }))
+  }
+
+  const hasVisibleProfileElement = Object.values(profileElements).some(Boolean)
+  const activeCount = order.filter(
+    (id) => enabled[id] && (id !== 'identity' || hasVisibleProfileElement),
+  ).length
   const activeTheme = themeOptions[themeIndex]
 
   return (
@@ -201,12 +290,16 @@ function App() {
         <main className="grid min-h-[calc(100vh-74px)] grid-cols-[290px_minmax(0,1fr)] max-[1040px]:grid-cols-[250px_minmax(0,1fr)] max-[760px]:flex max-[760px]:flex-col">
           <BuilderSidebar
             enabled={enabled}
-            onMove={moveComponent}
+            onReorder={reorderComponent}
             onTemplateChange={setTemplate}
+            onTextSizeChange={setTextSize}
             onThemeChange={setThemeIndex}
             onToggle={toggleComponent}
+            onToggleProfileElement={toggleProfileElement}
             order={order}
+            profileElements={profileElements}
             template={template}
+            textSize={textSize}
             themeIndex={themeIndex}
           />
 
@@ -279,10 +372,18 @@ function App() {
                 )}
               >
                 <ProfileCard
+                  collectionOrders={collections}
                   compact={viewport === 'mobile'}
                   enabled={enabled}
+                  onReorder={reorderComponent}
+                  onReorderLanguages={reorderLanguages}
+                  onReorderRepositories={reorderRepositories}
+                  onReorderSocials={reorderSocials}
+                  onReorderStats={reorderStats}
                   order={order}
+                  profileElements={profileElements}
                   template={template}
+                  textSize={textSize}
                   themeIndex={themeIndex}
                 />
               </div>

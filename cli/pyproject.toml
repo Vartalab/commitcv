@@ -1,0 +1,17 @@
+[build-system]
+requires = ["setuptools>=61"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "commitcv"
+version = "0.1.0"
+description = "GitHub Portfolio Generator CLI"
+requires-python = ">=3.10"
+
+dependencies = [
+    "requests",
+    "rich"
+]
+
+[project.scripts]
+commitcv = "cli:main"

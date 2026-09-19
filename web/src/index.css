@@ -48,6 +48,14 @@
     --color-profile-border: var(--profile-border);
     --color-profile-panel: var(--profile-panel);
     --color-profile-subtle: var(--profile-subtle);
+    --color-profile-theme-canvas: var(--profile-theme-canvas);
+    --color-profile-theme-panel: var(--profile-theme-panel);
+    --color-profile-theme-border: var(--profile-theme-border);
+    --color-profile-theme-outline: var(--profile-theme-outline);
+    --color-profile-theme-muted: var(--profile-theme-muted);
+    --color-profile-theme-foreground: var(--profile-theme-foreground);
+    --color-profile-theme-highlight: var(--profile-theme-highlight);
+    --color-profile-theme-subtle: var(--profile-theme-subtle);
     --color-developer-canvas: var(--developer-canvas);
     --color-developer-panel: var(--developer-panel);
     --color-developer-border: var(--developer-border);
@@ -62,13 +70,31 @@
     --color-language-other: var(--language-other);
     --color-accent-tangerine: var(--accent-tangerine);
     --color-accent-tangerine-text: var(--accent-tangerine-text);
+    --color-accent-tangerine-dark: var(--accent-tangerine-dark);
     --color-accent-tangerine-soft: var(--accent-tangerine-soft);
     --color-accent-cobalt: var(--accent-cobalt);
     --color-accent-cobalt-soft: var(--accent-cobalt-soft);
+    --color-accent-cobalt-dark: var(--accent-cobalt-dark);
     --color-accent-jade: var(--accent-jade);
+    --color-accent-jade-text: var(--accent-jade-text);
     --color-accent-jade-soft: var(--accent-jade-soft);
+    --color-accent-jade-dark: var(--accent-jade-dark);
     --color-accent-plum: var(--accent-plum);
+    --color-accent-plum-text: var(--accent-plum-text);
     --color-accent-plum-soft: var(--accent-plum-soft);
+    --color-accent-plum-dark: var(--accent-plum-dark);
+    --color-accent-sunflower: var(--accent-sunflower);
+    --color-accent-sunflower-text: var(--accent-sunflower-text);
+    --color-accent-sunflower-dark: var(--accent-sunflower-dark);
+    --color-accent-sunflower-soft: var(--accent-sunflower-soft);
+    --color-accent-rose: var(--accent-rose);
+    --color-accent-rose-text: var(--accent-rose-text);
+    --color-accent-rose-dark: var(--accent-rose-dark);
+    --color-accent-rose-soft: var(--accent-rose-soft);
+    --color-accent-lagoon: var(--accent-lagoon);
+    --color-accent-lagoon-text: var(--accent-lagoon-text);
+    --color-accent-lagoon-dark: var(--accent-lagoon-dark);
+    --color-accent-lagoon-soft: var(--accent-lagoon-soft);
     --color-prototype-border: var(--prototype-border);
     --color-prototype-surface: var(--prototype-surface);
     --color-prototype-foreground: var(--prototype-foreground);
@@ -111,6 +137,14 @@
     --profile-border: #e8e7e2;
     --profile-panel: #fffdfa;
     --profile-subtle: #fffaf6;
+    --profile-theme-canvas: var(--paper);
+    --profile-theme-panel: var(--profile-panel);
+    --profile-theme-border: var(--profile-border);
+    --profile-theme-outline: rgb(23 33 27 / 10%);
+    --profile-theme-muted: var(--profile-muted);
+    --profile-theme-foreground: var(--profile-foreground);
+    --profile-theme-highlight: var(--brand-ink);
+    --profile-theme-subtle: var(--profile-subtle);
     --developer-canvas: #151b18;
     --developer-panel: #19211d;
     --developer-border: #2e3832;
@@ -124,14 +158,32 @@
     --language-rust: #dea584;
     --language-other: #a3a3a3;
     --accent-tangerine: #f26b38;
-    --accent-tangerine-text: #d95728;
+    --accent-tangerine-text: #b43b11;
+    --accent-tangerine-dark: #ff9b73;
     --accent-tangerine-soft: #fff0e7;
     --accent-cobalt: #315bd8;
     --accent-cobalt-soft: #eaf0ff;
+    --accent-cobalt-dark: #9bb3ff;
     --accent-jade: #168a69;
+    --accent-jade-text: #0f6d53;
     --accent-jade-soft: #e4f6ef;
+    --accent-jade-dark: #69dab8;
     --accent-plum: #8c4ec7;
+    --accent-plum-text: #7538ad;
     --accent-plum-soft: #f4eafa;
+    --accent-plum-dark: #d0a0f5;
+    --accent-sunflower: #ca8a04;
+    --accent-sunflower-text: #865b00;
+    --accent-sunflower-dark: #f5c842;
+    --accent-sunflower-soft: #fff8d8;
+    --accent-rose: #db3e68;
+    --accent-rose-text: #a91d47;
+    --accent-rose-dark: #ff91ae;
+    --accent-rose-soft: #fff0f4;
+    --accent-lagoon: #087e8b;
+    --accent-lagoon-text: #08616a;
+    --accent-lagoon-dark: #6be3ed;
+    --accent-lagoon-soft: #e5f8fa;
     --prototype-border: #e1d9c9;
     --prototype-surface: #fffbf1;
     --prototype-foreground: #7b7061;
@@ -233,4 +285,75 @@
   html {
     @apply font-sans;
     }
+}
+
+@layer components {
+  .profile-card {
+    --profile-text-scale: 1;
+  }
+
+  .profile-card[data-text-size='small'] {
+    --profile-text-scale: 0.88;
+  }
+
+  .profile-card[data-text-size='large'] {
+    --profile-text-scale: 1.16;
+  }
+
+  .profile-card[data-template='developer'] {
+    --profile-theme-canvas: var(--developer-canvas);
+    --profile-theme-panel: var(--developer-panel);
+    --profile-theme-border: var(--developer-border);
+    --profile-theme-outline: var(--developer-outline);
+    --profile-theme-muted: var(--developer-muted);
+    --profile-theme-foreground: var(--developer-foreground);
+    --profile-theme-highlight: var(--developer-highlight);
+    --profile-theme-subtle: var(--developer-panel);
+  }
+
+  .profile-card[data-template='editorial'] {
+    --profile-theme-canvas: #fffaf0;
+    --profile-theme-panel: #fffdf7;
+    --profile-theme-border: #dfd2bd;
+    --profile-theme-outline: #c8b99f;
+    --profile-theme-muted: #6f6253;
+    --profile-theme-foreground: #2d251d;
+    --profile-theme-highlight: #5d4631;
+    --profile-theme-subtle: #f7eddd;
+    font-family: Georgia, 'Times New Roman', serif;
+  }
+
+  .profile-card[data-template='midnight'] {
+    --profile-theme-canvas: #101725;
+    --profile-theme-panel: #172135;
+    --profile-theme-border: #34425c;
+    --profile-theme-outline: #435373;
+    --profile-theme-muted: #aebbd0;
+    --profile-theme-foreground: #f4f7ff;
+    --profile-theme-highlight: #263a61;
+    --profile-theme-subtle: #141e31;
+  }
+
+  .profile-type-display {
+    font-size: clamp(
+      calc(24px * var(--profile-text-scale)),
+      calc(4cqw * var(--profile-text-scale)),
+      calc(36px * var(--profile-text-scale))
+    );
+  }
+
+  .profile-type-avatar { font-size: calc(23px * var(--profile-text-scale)); }
+  .profile-type-heading { font-size: calc(9px * var(--profile-text-scale)); }
+  .profile-type-body { font-size: calc(15px * var(--profile-text-scale)); }
+  .profile-type-meta { font-size: calc(10px * var(--profile-text-scale)); }
+  .profile-type-label { font-size: calc(12px * var(--profile-text-scale)); }
+  .profile-card [data-slot='badge'] {
+    font-size: calc(12px * var(--profile-text-scale)) !important;
+  }
+  .profile-type-stat { font-size: calc(18px * var(--profile-text-scale)); }
+  .profile-type-repository { font-size: calc(11px * var(--profile-text-scale)); }
+  .profile-type-description { font-size: calc(9px * var(--profile-text-scale)); }
+  .profile-type-detail { font-size: calc(8px * var(--profile-text-scale)); }
+  .profile-type-social-label { font-size: calc(7px * var(--profile-text-scale)); }
+  .profile-type-social-value { font-size: calc(8px * var(--profile-text-scale)); }
 }
